@@ -154,6 +154,12 @@ provision:
     cp -f "$KUBECONFIG" {{.Home}}/.kube/config
     chown -R {{.User}}:{{.User}} {{.Home}}/.kube
 
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    export KUBECONFIG='/etc/kubernetes/admin.conf'
     kubectl taint nodes cp-3 node.cilium.io/agent-not-ready=true:NoExecute
 
 probes:

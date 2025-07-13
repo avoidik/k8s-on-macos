@@ -156,14 +156,13 @@ provision:
     cp -f "$KUBECONFIG" {{.Home}}/.kube/config
     chown -R {{.User}}:{{.User}} {{.Home}}/.kube
 
-    kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute
-
 - mode: system
   script: |
     #!/bin/bash
     set -eux -o pipefail
 
-    KUBECONFIG='/etc/kubernetes/admin.conf'
+    export KUBECONFIG='/etc/kubernetes/admin.conf'
+    kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute
     kubectl scale deploy -n kube-system coredns --current-replicas=2 --replicas=1
 
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
