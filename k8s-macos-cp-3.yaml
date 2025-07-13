@@ -160,7 +160,7 @@ provision:
     set -eux -o pipefail
 
     export KUBECONFIG='/etc/kubernetes/admin.conf'
-    kubectl taint nodes cp-3 node.cilium.io/agent-not-ready=true:NoExecute
+    kubectl taint nodes cp-3 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
 
 probes:
 - description: "kubeadm to be installed"

@@ -35,6 +35,7 @@ cd socket_vmnet
 git checkout v1.2.1
 sudo make install.bin
 limactl sudoers | sudo tee /etc/sudoers.d/lima
+echo "$USER ALL=(ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/$USER"
 ```
 
 Run `templates.sh` to download lima OS VMs templates.
