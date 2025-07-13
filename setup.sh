@@ -56,3 +56,5 @@ helm upgrade \
 
 kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
 kubectl apply -f assets/local-path-cm.yaml
+
+cilium status --wait
