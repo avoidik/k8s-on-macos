@@ -2,7 +2,7 @@
 
 export KUBECONFIG="$HOME/.lima/cp-1/copied-from-guest/cp-1-kubeconfig.yaml"
 
-kubectl get csr | grep -e 'Pending' -e 'system:node' | awk '{print $1}' | xargs kubectl certificate approve
+kubectl get csr | grep 'system:node' | grep 'Pending' | awk '{print $1}' | xargs kubectl certificate approve
 
 kubectl scale deploy -n kube-system coredns --replicas=1
 
@@ -53,3 +53,6 @@ helm upgrade \
     --create-namespace \
     --namespace metrics-server \
     --atomic
+
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+kubectl apply -f assets/local-path-cm.yaml
