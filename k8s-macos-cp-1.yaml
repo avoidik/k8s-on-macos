@@ -162,6 +162,12 @@ provision:
     set -eux -o pipefail
 
     export KUBECONFIG='/etc/kubernetes/admin.conf'
+
+    if ! timeout 60s bash -c "until kubectl wait node --for condition=Ready=false cp-1 >/dev/null 2>&1; do sleep 3; done"; then
+      echo >&2 "waited too long for a node to come up"
+      exit 1
+    fi
+
     kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
 
     kubectl scale deploy -n kube-system coredns --replicas=1
