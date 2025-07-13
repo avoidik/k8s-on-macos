@@ -48,4 +48,4 @@ Run `start_workers.sh` to start Kubernetes workers.
 
 Run `setup.sh` to install helm charts.
 
-Run `clean.sh` to terminate all previously created VMs.
+Run `stop.sh` to stop all previously created VMs or run `clean.sh` to terminate them.
