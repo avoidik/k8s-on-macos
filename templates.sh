@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir ~/.lima/_templates
+mkdir -p ~/.lima/_templates
 
 curl -fsSL https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/k8s-macos-cp-1.yaml \
     -o ~/.lima/_templates/k8s-macos-cp-1.yaml

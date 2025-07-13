@@ -45,4 +45,11 @@ Run `start_servers.sh` to start Kubernetes control planes.
 
 Run `start_workers.sh` to start Kubernetes workers.
 
+Approve certificate requests:
+
+```bash
+export KUBECONFIG="$HOME/.lima/cp-1/copied-from-guest/cp-1-kubeconfig.yaml"
+kubectl get csr | grep -e 'Pending' -e 'system:node' | awk '{print $1}' | xargs kubectl certificate approve
+```
+
 Run `clean.sh` to terminate all previously created VMs.
