@@ -1,0 +1,239 @@
+vmType: qemu
+
+images:
+- location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+
+cpus: 2
+memory: "2GiB"
+disk: "8GiB"
+
+networks:
+- lima: shared
+  macAddress: "52:55:55:12:34:01"
+
+portForwards:
+- guestPortRange: [30000, 32767]
+  hostPortRange: [30000, 32767]
+  hostIP: "0.0.0.0"
+- ignore: true
+  proto: any
+  guestIP: "0.0.0.0"
+
+mountType: 9p
+mounts:
+- location: "/opt/lima/storage"
+  mountPoint: "/storage"
+  writable: true
+  9p:
+    securityModel: "mapped-xattr"
+
+containerd:
+  system: true
+  user: false
+
+provision:
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    cat <<EOF | tee -a /etc/hosts > /dev/null
+    192.168.105.100 sandbox sandbox.k8s.local
+    192.168.105.101 cp-1
+    192.168.105.102 cp-2
+    192.168.105.103 cp-3
+    192.168.105.104 worker-1
+    192.168.105.105 worker-2
+    192.168.105.106 worker-3
+    EOF
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    cat <<EOF | tee -a /etc/modules-load.d/k8s.conf > /dev/null
+    overlay
+    br_netfilter
+    ip_vs
+    ip_vs_rr
+    ip_vs_wrr
+    ip_vs_sh
+    EOF
+
+    modprobe overlay
+    modprobe br_netfilter
+    modprobe ip_vs
+    modprobe ip_vs_rr
+    modprobe ip_vs_wrr
+    modprobe ip_vs_sh
+
+    cat <<EOF | tee -a /etc/sysctl.d/k8s.conf > /dev/null
+    net.bridge.bridge-nf-call-iptables  = 1
+    net.bridge.bridge-nf-call-ip6tables = 1
+    net.ipv4.ip_forward                 = 1
+    EOF
+
+    sysctl --system
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    mkdir -p /etc/containerd
+    containerd config default > /etc/containerd/config.toml
+    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+    sed -i 's/sandbox_image = "registry.k8s.io/pause:3.8"/sandbox_image = "registry.k8s.io/pause:3.10"/' /etc/containerd/config.toml
+
+    systemctl restart containerd
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -feux -o pipefail
+
+    export DEBIAN_FRONTEND='noninteractive'
+    export NEEDRESTART_MODE='a'
+
+    K8S_REPO='v1.32'
+    K8S_VERSION='1.32.6'
+
+    apt-get update -y -q
+    apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
+
+    mkdir -p /etc/apt/keyrings
+    curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8S_REPO}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_REPO}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
+
+    cat <<EOF | tee /etc/crictl.yaml > /dev/null
+    runtime-endpoint: unix:///run/containerd/containerd.sock
+    EOF
+    setfacl --modify user:{{.User}}:rw /run/containerd/containerd.sock
+
+    apt-get update -y -q
+    apt-get install -y -q kubernetes-cni cri-tools
+    rm -f /etc/cni/net.d/*.conf*
+
+    apt-get install -y -q kubeadm="${K8S_VERSION}-*" kubectl="${K8S_VERSION}-*" kubelet="${K8S_VERSION}-*"
+    apt-mark hold kubeadm kubectl kubelet
+    systemctl enable --now kubelet
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cp-1.yaml
+
+    mkdir -p /etc/kubernetes/manifests
+
+    KVVERSION='v0.9.2'
+    INTERFACE='lima0'
+    VIP='192.168.105.100'
+    ctr image pull ghcr.io/kube-vip/kube-vip:"$KVVERSION"
+    ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:"$KVVERSION" vip /kube-vip manifest pod \
+        --arp \
+        --controlplane \
+        --address "$VIP" \
+        --interface "$INTERFACE" \
+        --enableLoadBalancer \
+        --leaderElection | \
+          tee /etc/kubernetes/manifests/kube-vip.yaml > /dev/null
+
+    sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+    kubeadm init --upload-certs --config cp-1.yaml
+    sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    KUBECONFIG='/etc/kubernetes/admin.conf'
+    mkdir -p {{.Home}}/.kube
+    cp -f "$KUBECONFIG" {{.Home}}/.kube/config
+    chown -R {{.User}}:{{.User}} {{.Home}}/.kube
+
+    kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    kubectl scale deploy -n kube-system coredns --current-replicas=2 --replicas=1
+
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+    kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+
+    curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cilium-values.yaml
+
+    CILIUM_CHART_VERSION='1.17.5'
+
+    helm repo add cilium https://helm.cilium.io/
+    helm repo update cilium
+    helm upgrade \
+        --install cilium cilium/cilium \
+        --version "$CILIUM_CHART_VERSION" \
+        --namespace kube-system \
+        --values cilium-values.yaml
+
+    kubectl apply -f https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/gateway.yaml
+    kubectl apply -f https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cilium-l2.yaml
+
+    METRICS_SERVER_CHART_VERSION='3.12.2'
+
+    helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server/
+    helm repo update metrics-server
+    helm upgrade \
+        --install metrics-server metrics-server/metrics-server \
+        --version "$METRICS_SERVER_CHART_VERSION" \
+        --set 'args={--kubelet-insecure-tls}' \
+        --set 'tolerations[0].operator=Exists,tolerations[0].effect=NoSchedule' \
+        --set 'replicas=1' \
+        --create-namespace \
+        --namespace metrics-server \
+        --atomic
+
+probes:
+- description: "kubeadm to be installed"
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until command -v kubeadm >/dev/null 2>&1; do sleep 3; done"; then
+      echo >&2 "kubeadm is not installed yet"
+      exit 1
+    fi
+  hint: |
+    See "/var/log/cloud-init-output.log" in the guest
+
+- description: "kubeadm to be completed"
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 300s bash -c "until test -f /etc/kubernetes/admin.conf; do sleep 3; done"; then
+      echo >&2 "k8s is not running yet"
+      exit 1
+    fi
+  hint: |
+    The k8s kubeconfig file has not yet been created.
+
+copyToHost:
+- guest: "/etc/kubernetes/admin.conf"
+  host: "{{.Dir}}/copied-from-guest/cp-1-kubeconfig.yaml"
+  deleteOnStop: true
+
+message: |
+  To run `kubectl` on the host (assumes kubectl is installed), run the following commands:
+  ------
+  export KUBECONFIG="{{.Dir}}/copied-from-guest/cp-1-kubeconfig.yaml"
+  kubectl ...
+  ------
