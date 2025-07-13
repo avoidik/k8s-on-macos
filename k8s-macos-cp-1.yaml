@@ -163,14 +163,26 @@ provision:
 
     export KUBECONFIG='/etc/kubernetes/admin.conf'
     kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
+
     kubectl scale deploy -n kube-system coredns --replicas=1
 
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+    kubectl wait --for condition=established crd gatewayclasses.gateway.networking.k8s.io --timeout=90s
+
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+    kubectl wait --for condition=established crd gateways.gateway.networking.k8s.io --timeout=90s
+
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+    kubectl wait --for condition=established crd httproutes.gateway.networking.k8s.io --timeout=90s
+
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+    kubectl wait --for condition=established crd referencegrants.gateway.networking.k8s.io --timeout=90s
+
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+    kubectl wait --for condition=established crd grpcroutes.gateway.networking.k8s.io --timeout=90s
+
     kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+    kubectl wait --for condition=established crd tlsroutes.gateway.networking.k8s.io --timeout=90s
 
     curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
