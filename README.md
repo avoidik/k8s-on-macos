@@ -20,7 +20,7 @@ Install packages:
 xcode-select --install
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 eval "$(/opt/homebrew/bin/brew shellenv)"
-brew install go lima kubernetes-cli
+brew install go lima kubernetes-cli helm
 ```
 
 Adjust `~/.lima/_config/networks.yaml` as follows:
