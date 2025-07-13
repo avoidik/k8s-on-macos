@@ -48,6 +48,14 @@ provision:
     192.168.105.106 worker-3
     EOF
 
+    mkdir -p /etc/systemd/resolved.conf.d
+    cat <<EOF | tee /etc/systemd/resolved.conf.d/disable-stub.conf > /dev/null
+    [Resolve]
+    DNSStubListener=no
+    EOF
+    ln -sfn /run/systemd/resolve/resolv.conf /etc/resolv.conf
+    systemctl restart systemd-resolved
+
 - mode: system
   script: |
     #!/bin/bash
