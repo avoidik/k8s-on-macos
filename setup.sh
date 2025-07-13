@@ -24,10 +24,6 @@ kubectl wait --for condition=established crd grpcroutes.gateway.networking.k8s.i
 kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
 kubectl wait --for condition=established crd tlsroutes.gateway.networking.k8s.io --timeout=90s
 
-curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-
-curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cilium-values.yaml
-
 CILIUM_CHART_VERSION='1.17.5'
 
 helm repo add cilium https://helm.cilium.io/
@@ -36,13 +32,13 @@ helm upgrade \
     --install cilium cilium/cilium \
     --version "$CILIUM_CHART_VERSION" \
     --namespace kube-system \
-    --values cilium-values.yaml
+    --values assets/cilium-values.yaml
 
 kubectl rollout status daemonset -n kube-system cilium --timeout=90s
 kubectl wait deployment -n kube-system cilium-operator --for condition=Available=True --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/gateway.yaml
-kubectl apply -f https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cilium-l2.yaml
+kubectl apply -f assets/gateway.yaml
+kubectl apply -f assets/cilium-l2.yaml
 
 METRICS_SERVER_CHART_VERSION='3.12.2'
 
