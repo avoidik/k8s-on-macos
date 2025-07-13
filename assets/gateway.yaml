@@ -5,9 +5,9 @@ metadata:
   namespace: kube-system
 spec:
   gatewayClassName: cilium
-  infrastructure:
-    annotations:
-      "io.cilium/lb-ipam-ips": "192.168.105.254"
+  addresses:
+  - type: IPAddress
+    value: "192.168.105.254"
   listeners:
   - name: http
     protocol: HTTP
