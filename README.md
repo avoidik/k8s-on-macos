@@ -24,6 +24,7 @@ brew install go lima kubernetes-cli helm cilium-cli
 ```
 
 Adjust `~/.lima/_config/networks.yaml` as follows:
+
 - `socketVMNet` set to `/opt/socket_vmnet/bin/socket_vmnet`
 - `dhcpEnd` reduced to `192.168.x.99`
 
@@ -38,14 +39,19 @@ limactl sudoers | sudo tee /etc/sudoers.d/lima
 echo "$USER ALL=(ALL) NOPASSWD:ALL" | sudo tee "/etc/sudoers.d/$USER"
 ```
 
-Run `templates.sh` to download lima OS VMs templates.
+Run `01-templates.sh` to download lima OS VMs templates.
 
-Run `create_vms.sh` to create lima OS VMs.
+Run `02-create_vms.sh` to create lima OS VMs.
 
-Run `start_servers.sh` to start Kubernetes control planes.
+Run `03-start_servers.sh` to start Kubernetes control planes.
 
-Run `start_workers.sh` to start Kubernetes workers.
+Run `04-start_workers.sh` to start Kubernetes workers.
 
-Run `setup.sh` to install helm charts.
+Run `05-setup.sh` to install helm charts.
 
-Run `stop.sh` to stop all previously created VMs or run `clean.sh` to terminate them.
+Run `06-stop.sh` to stop all previously created VMs or run `07-clean.sh` to
+terminate them.
+
+> By default only one control-plane node is enabled. If you need more than one,
+> uncomment them in `02-create_vms.sh`, `03-start_servers.sh`, `06-stop.sh`, and
+> `07-clean.sh`.

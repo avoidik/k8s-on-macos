@@ -106,7 +106,7 @@ provision:
     export NEEDRESTART_MODE='a'
 
     K8S_REPO='v1.32'
-    K8S_VERSION='1.32.6'
+    K8S_VERSION='1.32.8'
 
     apt-get update -y -q
     apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl

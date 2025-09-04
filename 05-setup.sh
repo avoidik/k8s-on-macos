@@ -32,8 +32,7 @@ helm upgrade \
     --install cilium cilium/cilium \
     --version "$CILIUM_CHART_VERSION" \
     --namespace kube-system \
-    --values assets/cilium-values.yaml \
-    --atomic
+    --values assets/cilium-values.yaml
 
 kubectl rollout status daemonset -n kube-system cilium --timeout=90s
 kubectl wait deployment -n kube-system cilium-operator --for condition=Available=True --timeout=90s
