@@ -34,13 +34,18 @@ helm upgrade \
     --install cilium cilium/cilium \
     --version "$CILIUM_CHART_VERSION" \
     --namespace kube-system \
-    --values assets/cilium-values.yaml
+    --values assets/cilium-values.yaml \
+    --atomic
 
 kubectl rollout status daemonset -n kube-system cilium --timeout=90s
 kubectl wait deployment -n kube-system cilium-operator --for condition=Available=True --timeout=90s
 
 kubectl apply -f assets/gateway.yaml
 kubectl apply -f assets/cilium-l2.yaml
+
+kubectl get configmaps -n kube-system kubeadm-config -o yaml | yq '.data.ClusterConfiguration | from_yaml | .networking.podSubnet'
+
+kubectl get nodes -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.spec.podCIDR}{"\n"}' | column -ts $'\t'
 
 METRICS_SERVER_CHART_VERSION='3.12.2'
 
@@ -56,7 +61,7 @@ helm upgrade \
     --namespace metrics-server \
     --atomic
 
-kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.31/deploy/local-path-storage.yaml
+kubectl apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v0.0.32/deploy/local-path-storage.yaml
 kubectl apply -f assets/local-path-cm.yaml
 
 cilium status --wait

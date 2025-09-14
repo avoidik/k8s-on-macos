@@ -50,18 +50,10 @@ cni:
 enableK8sEndpointSlice: true
 
 ingressController:
-  enabled: true
-  default: true
-  loadbalancerMode: shared
-  enforceHttps: false
-  service:
-    annotations:
-      "io.cilium/lb-ipam-ips": "192.168.105.254"
+  enabled: false
 
 gatewayAPI:
-  enabled: true
-  gatewayClass:
-    create: "true"
+  enabled: false
 
 endpointRoutes:
   enabled: true

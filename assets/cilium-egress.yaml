@@ -1,0 +1,12 @@
+apiVersion: cilium.io/v2
+kind: CiliumEgressGatewayPolicy
+metadata:
+  name: egress-gateway-policy
+spec:
+  selectors:
+    - podSelector: {}
+  destinationCIDRs:
+    - "0.0.0.0/0"
+  egressGateway:
+    nodeSelector: {}
+    interface: lima0

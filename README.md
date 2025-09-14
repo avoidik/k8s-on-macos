@@ -52,6 +52,24 @@ Run `05-setup.sh` to install helm charts.
 Run `06-stop.sh` to stop all previously created VMs or run `07-clean.sh` to
 terminate them.
 
+To access Kubernetes API:
+
+```bash
+export KUBECONFIG="$HOME/.lima/cp-1/copied-from-guest/cp-1-kubeconfig.yaml"
+kubectl get nodes
+```
+
+To be able to SSH into any of the VMs:
+
+```bash
+ssh -F "$HOME/.lima/cp-1/ssh.config" lima-cp-1
+ssh -F "$HOME/.lima/cp-2/ssh.config" lima-cp-2
+ssh -F "$HOME/.lima/cp-3/ssh.config" lima-cp-3
+ssh -F "$HOME/.lima/worker-1/ssh.config" lima-worker-1
+ssh -F "$HOME/.lima/worker-2/ssh.config" lima-worker-2
+ssh -F "$HOME/.lima/worker-3/ssh.config" lima-worker-3
+```
+
 > By default only one control-plane node is enabled. If you need more than one,
 > uncomment them in `02-create_vms.sh`, `03-start_servers.sh`, `06-stop.sh`, and
 > `07-clean.sh`.
