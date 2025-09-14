@@ -1,7 +1,11 @@
 vmType: qemu
 
 images:
-- location: "https://cloud-images.ubuntu.com/releases/24.04/release/ubuntu-24.04-server-cloudimg-arm64.img"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250805/ubuntu-24.04-server-cloudimg-arm64.img"
+  arch: "aarch64"
+  digest: "sha256:6177a7958f0168e38ca58c13961bdc613d71b9771148add03bc4ad637eb01b8d"
+
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-arm64.img"
   arch: "aarch64"
 
 cpus: 2
