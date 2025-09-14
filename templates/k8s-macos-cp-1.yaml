@@ -10,7 +10,7 @@ disk: "8GiB"
 
 networks:
 - lima: shared
-  macAddress: "52:55:55:12:34:04"
+  macAddress: "52:55:55:12:34:01"
 
 portForwards:
 - guestPortRange: [30000, 32767]
@@ -105,8 +105,8 @@ provision:
     export DEBIAN_FRONTEND='noninteractive'
     export NEEDRESTART_MODE='a'
 
-    K8S_REPO='v1.32'
-    K8S_VERSION='1.32.8'
+    K8S_REPO='v1.33'
+    K8S_VERSION='1.33.5'
 
     apt-get update -y -q
     apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
@@ -133,9 +133,44 @@ provision:
     #!/bin/bash
     set -eux -o pipefail
 
-    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/worker-1.yaml
+    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cp-1.yaml
 
-    kubeadm join --config worker-1.yaml
+    mkdir -p /etc/kubernetes/manifests
+
+    KVVERSION='v0.9.2'
+    INTERFACE='lima0'
+    VIP='192.168.105.100'
+    ctr image pull ghcr.io/kube-vip/kube-vip:"$KVVERSION"
+    ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:"$KVVERSION" vip /kube-vip manifest pod \
+        --arp \
+        --controlplane \
+        --address "$VIP" \
+        --interface "$INTERFACE" \
+        --enableLoadBalancer \
+        --leaderElection | \
+          tee /etc/kubernetes/manifests/kube-vip.yaml > /dev/null
+
+    sed -i 's#path: /etc/kubernetes/admin.conf#path: /etc/kubernetes/super-admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+    kubeadm init --upload-certs --config cp-1.yaml
+    sed -i 's#path: /etc/kubernetes/super-admin.conf#path: /etc/kubernetes/admin.conf#' /etc/kubernetes/manifests/kube-vip.yaml
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    KUBECONFIG='/etc/kubernetes/admin.conf'
+    mkdir -p {{.Home}}/.kube
+    cp -f "$KUBECONFIG" {{.Home}}/.kube/config
+    chown -R {{.User}}:{{.User}} {{.Home}}/.kube
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    export KUBECONFIG='/etc/kubernetes/admin.conf'
+    kubectl taint nodes cp-1 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
 
 probes:
 - description: "kubeadm to be installed"
@@ -149,5 +184,25 @@ probes:
   hint: |
     See "/var/log/cloud-init-output.log" in the guest
 
+- description: "kubeadm to be completed"
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 300s bash -c "until test -f /etc/kubernetes/admin.conf; do sleep 3; done"; then
+      echo >&2 "k8s is not running yet"
+      exit 1
+    fi
+  hint: |
+    The k8s kubeconfig file has not yet been created.
+
+copyToHost:
+- guest: "/etc/kubernetes/admin.conf"
+  host: "{{.Dir}}/copied-from-guest/cp-1-kubeconfig.yaml"
+  deleteOnStop: true
+
 message: |
-  Worker 1 has joined the cluster!
+  To run `kubectl` on the host (assumes kubectl is installed), run the following commands:
+  ------
+  export KUBECONFIG="{{.Dir}}/copied-from-guest/cp-1-kubeconfig.yaml"
+  kubectl ...
+  ------

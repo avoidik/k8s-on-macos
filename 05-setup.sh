@@ -6,25 +6,27 @@ kubectl get csr | grep 'system:node' | grep 'Pending' | awk '{print $1}' | xargs
 
 kubectl scale deploy -n kube-system coredns --replicas=1
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
+GATEWAY_API_VER='v1.3.0'
+
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/standard/gateway.networking.k8s.io_gatewayclasses.yaml
 kubectl wait --for condition=established crd gatewayclasses.gateway.networking.k8s.io --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/standard/gateway.networking.k8s.io_gateways.yaml
 kubectl wait --for condition=established crd gateways.gateway.networking.k8s.io --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/standard/gateway.networking.k8s.io_httproutes.yaml
 kubectl wait --for condition=established crd httproutes.gateway.networking.k8s.io --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/standard/gateway.networking.k8s.io_referencegrants.yaml
 kubectl wait --for condition=established crd referencegrants.gateway.networking.k8s.io --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/standard/gateway.networking.k8s.io_grpcroutes.yaml
 kubectl wait --for condition=established crd grpcroutes.gateway.networking.k8s.io --timeout=90s
 
-kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/${GATEWAY_API_VER}/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
 kubectl wait --for condition=established crd tlsroutes.gateway.networking.k8s.io --timeout=90s
 
-CILIUM_CHART_VERSION='1.17.7'
+CILIUM_CHART_VERSION='1.18.1'
 
 helm repo add cilium https://helm.cilium.io/ --force-update
 helm repo update cilium

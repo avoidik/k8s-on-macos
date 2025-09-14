@@ -32,11 +32,15 @@ kind: ClusterConfiguration
 clusterName: "sandbox"
 controlPlaneEndpoint: 192.168.105.100:6443
 featureGates:
-kubernetesVersion: 1.32.8
+kubernetesVersion: 1.33.5
 networking:
   serviceSubnet: "10.96.0.0/16"
   podSubnet: "10.244.0.0/16"
   dnsDomain: "cluster.local"
+controllerManager:
+  extraArgs:
+    - name: node-cidr-mask-size
+      value: "24"
 proxy:
   disabled: true
 apiServer:

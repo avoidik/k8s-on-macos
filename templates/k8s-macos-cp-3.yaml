@@ -10,7 +10,7 @@ disk: "8GiB"
 
 networks:
 - lima: shared
-  macAddress: "52:55:55:12:34:02"
+  macAddress: "52:55:55:12:34:03"
 
 portForwards:
 - guestPortRange: [30000, 32767]
@@ -105,8 +105,8 @@ provision:
     export DEBIAN_FRONTEND='noninteractive'
     export NEEDRESTART_MODE='a'
 
-    K8S_REPO='v1.32'
-    K8S_VERSION='1.32.8'
+    K8S_REPO='v1.33'
+    K8S_VERSION='1.33.5'
 
     apt-get update -y -q
     apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
@@ -133,7 +133,7 @@ provision:
     #!/bin/bash
     set -eux -o pipefail
 
-    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cp-2.yaml
+    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/cp-3.yaml
 
     mkdir -p /etc/kubernetes/manifests
 
@@ -150,7 +150,7 @@ provision:
         --leaderElection | \
           tee /etc/kubernetes/manifests/kube-vip.yaml > /dev/null
 
-    kubeadm join --config cp-2.yaml
+    kubeadm join --config cp-3.yaml
 
 - mode: system
   script: |
@@ -168,7 +168,7 @@ provision:
     set -eux -o pipefail
 
     export KUBECONFIG='/etc/kubernetes/admin.conf'
-    kubectl taint nodes cp-2 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
+    kubectl taint nodes cp-3 node.cilium.io/agent-not-ready=true:NoExecute --overwrite
 
 probes:
 - description: "kubeadm to be installed"
@@ -195,12 +195,12 @@ probes:
 
 copyToHost:
 - guest: "/etc/kubernetes/admin.conf"
-  host: "{{.Dir}}/copied-from-guest/cp-2-kubeconfig.yaml"
+  host: "{{.Dir}}/copied-from-guest/cp-3-kubeconfig.yaml"
   deleteOnStop: true
 
 message: |
   To run `kubectl` on the host (assumes kubectl is installed), run the following commands:
   ------
-  export KUBECONFIG="{{.Dir}}/copied-from-guest/cp-2-kubeconfig.yaml"
+  export KUBECONFIG="{{.Dir}}/copied-from-guest/cp-3-kubeconfig.yaml"
   kubectl ...
   ------
