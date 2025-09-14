@@ -43,13 +43,13 @@ provision:
     set -eux -o pipefail
 
     cat <<EOF | tee -a /etc/hosts > /dev/null
-    192.168.105.100 sandbox sandbox.kube
-    192.168.105.101 cp-1
-    192.168.105.102 cp-2
-    192.168.105.103 cp-3
-    192.168.105.104 worker-1
-    192.168.105.105 worker-2
-    192.168.105.106 worker-3
+    192.168.105.100 sandbox.kube sandbox
+    192.168.105.101 lima-cp-1 cp-1
+    192.168.105.102 lima-cp-2 cp-2
+    192.168.105.103 lima-cp-3 cp-3
+    192.168.105.104 lima-worker-1 worker-1
+    192.168.105.105 lima-worker-2 worker-2
+    192.168.105.106 lima-worker-3 worker-3
     EOF
 
     mkdir -p /etc/systemd/resolved.conf.d
