@@ -5,7 +5,7 @@ mountType: virtiofs
 
 mounts:
 - location: "/opt/lima/storage"
-  mountPoint: "/opt/local-path-provisioner"
+  mountPoint: "/storage"
   writable: true
 
 rosetta:

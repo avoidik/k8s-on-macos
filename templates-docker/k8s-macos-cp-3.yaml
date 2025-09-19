@@ -5,7 +5,7 @@ mountType: virtiofs
 
 mounts:
 - location: "/opt/lima/storage"
-  mountPoint: "/opt/local-path-provisioner"
+  mountPoint: "/storage"
   writable: true
 
 rosetta:
@@ -187,16 +187,17 @@ provision:
 
     mkdir -p /etc/kubernetes/manifests
 
-    KVVERSION='v0.9.2'
+    KVVERSION='v1.0.0'
     INTERFACE='lima0'
     VIP='192.168.105.100'
-    ctr image pull ghcr.io/kube-vip/kube-vip:"$KVVERSION"
-    ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:"$KVVERSION" vip /kube-vip manifest pod \
+    docker pull ghcr.io/kube-vip/kube-vip:"$KVVERSION"
+    docker run --rm --network host ghcr.io/kube-vip/kube-vip:"$KVVERSION" manifest pod \
         --arp \
         --controlplane \
         --address "$VIP" \
         --interface "$INTERFACE" \
         --enableLoadBalancer \
+        --services \
         --leaderElection | \
           tee /etc/kubernetes/manifests/kube-vip.yaml > /dev/null
 
