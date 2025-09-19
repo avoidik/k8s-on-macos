@@ -69,13 +69,13 @@ provision:
     curl -fsSL https://get.docker.com | env DEBIAN_FRONTEND=noninteractive sh
     usermod -a -G docker {{.User}}
 
-    mkdir -p /etc/systemd/system/docker.service.d
-    cat <<'EOF' > /etc/systemd/system/docker.service.d/override.conf
-    [Service]
-    Environment=DOCKER_DEFAULT_PLATFORM=linux/amd64
+    mkdir -p /etc/systemd/system/docker.socket.d
+    cat <<'EOF' > /etc/systemd/system/docker.socket.d/override.conf
+    [Socket]
+    SocketUser={{.User}}
     EOF
     systemctl daemon-reload
-    systemctl restart docker.service
+    systemctl restart docker.socket
 
     curl -fsSLO https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.20/cri-dockerd-0.3.20.arm64.tgz
     tar -zxf cri-dockerd-0.3.20.arm64.tgz -C /usr/local/bin --strip-components 1 cri-dockerd/cri-dockerd
@@ -155,9 +155,9 @@ provision:
     K8S_VERSION='1.33.5'
 
     apt-get update -y -q
-    apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
+    apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl socat
 
-    apt-get install -y -q binfmt-support qemu-user-static
+    # apt-get install -y -q binfmt-support qemu-user-static
     curl -fsSL https://gist.githubusercontent.com/avoidik/5239a54da643a0499f627492285605b8/raw/6a02b448076709e9f7a3b75e4431211252df6e3c/qemu-binfmt-conf.sh -o /usr/local/bin/qemu-binfmt-conf.sh
     chmod +x /usr/local/bin/qemu-binfmt-conf.sh
 

@@ -123,7 +123,7 @@ provision:
     K8S_VERSION='1.33.5'
 
     apt-get update -y -q
-    apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
+    apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl socat
 
     mkdir -p /etc/apt/keyrings
     curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8S_REPO}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
