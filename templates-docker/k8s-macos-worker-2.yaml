@@ -1,14 +1,16 @@
-vmType: qemu
+vmType: vz
 arch: aarch64
 
-mountType: 9p
+mountType: virtiofs
 
 mounts:
 - location: "/opt/lima/storage"
   mountPoint: "/opt/local-path-provisioner"
   writable: true
-  9p:
-   securityModel: "mapped-xattr"
+
+rosetta:
+  enabled: true
+  binfmt: true
 
 images:
 - location: "https://cloud-images.ubuntu.com/releases/noble/release-20250805/ubuntu-24.04-server-cloudimg-arm64.img"
@@ -28,7 +30,7 @@ disk: "20GiB"
 
 networks:
 - lima: shared
-  macAddress: "52:55:55:12:34:06"
+  macAddress: "52:55:55:12:34:05"
 
 portForwards:
 - guestPort: 80
@@ -43,10 +45,52 @@ portForwards:
   guestIP: "0.0.0.0"
 
 containerd:
-  system: true
+  system: false
   user: false
 
+hostResolver:
+  hosts:
+    host.docker.internal: host.lima.internal
+
 provision:
+- mode: system
+  script: |
+    #!/bin/bash
+
+    sed -i 's/host.lima.internal.*/host.lima.internal host.docker.internal/' /etc/hosts
+
+- mode: system
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+
+    command -v docker > /dev/null 2>&1 && exit 0
+
+    curl -fsSL https://get.docker.com | env DEBIAN_FRONTEND=noninteractive sh
+    usermod -a -G docker {{.User}}
+
+    mkdir -p /etc/systemd/system/docker.service.d
+    cat <<'EOF' > /etc/systemd/system/docker.service.d/override.conf
+    [Service]
+    Environment=DOCKER_DEFAULT_PLATFORM=linux/amd64
+    EOF
+    systemctl daemon-reload
+    systemctl restart docker.service
+
+    curl -fsSLO https://github.com/Mirantis/cri-dockerd/releases/download/v0.3.20/cri-dockerd-0.3.20.arm64.tgz
+    tar -zxf cri-dockerd-0.3.20.arm64.tgz -C /usr/local/bin --strip-components 1 cri-dockerd/cri-dockerd
+    chmod +x /usr/local/bin/cri-dockerd
+    chown root:root /usr/local/bin/cri-dockerd
+    rm -f cri-dockerd-0.3.20.arm64.tgz
+
+    curl -fsSL https://raw.githubusercontent.com/Mirantis/cri-dockerd/refs/tags/v0.3.20/packaging/systemd/cri-docker.service -o /etc/systemd/system/cri-docker.service
+    curl -fsSL https://raw.githubusercontent.com/Mirantis/cri-dockerd/refs/tags/v0.3.20/packaging/systemd/cri-docker.socket -o /etc/systemd/system/cri-docker.socket
+    sed -i -e 's,/usr/bin/cri-dockerd,/usr/local/bin/cri-dockerd,' /etc/systemd/system/cri-docker.service
+
+    systemctl daemon-reload
+    systemctl reenable cri-docker.socket
+    systemctl restart cri-docker.socket
+
 - mode: system
   script: |
     #!/bin/bash
@@ -102,18 +146,6 @@ provision:
 - mode: system
   script: |
     #!/bin/bash
-    set -eux -o pipefail
-
-    mkdir -p /etc/containerd
-    containerd config default > /etc/containerd/config.toml
-    sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-    sed -i 's/sandbox_image = "registry.k8s.io/pause:3.8"/sandbox_image = "registry.k8s.io/pause:3.10"/' /etc/containerd/config.toml
-
-    systemctl restart containerd
-
-- mode: system
-  script: |
-    #!/bin/bash
     set -feux -o pipefail
 
     export DEBIAN_FRONTEND='noninteractive'
@@ -125,14 +157,18 @@ provision:
     apt-get update -y -q
     apt-get install -y -q apt-transport-https ca-certificates curl gnupg ipvsadm jq acl
 
+    apt-get install -y -q binfmt-support qemu-user-static
+    curl -fsSL https://gist.githubusercontent.com/avoidik/5239a54da643a0499f627492285605b8/raw/6a02b448076709e9f7a3b75e4431211252df6e3c/qemu-binfmt-conf.sh -o /usr/local/bin/qemu-binfmt-conf.sh
+    chmod +x /usr/local/bin/qemu-binfmt-conf.sh
+
     mkdir -p /etc/apt/keyrings
     curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8S_REPO}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_REPO}/deb/ /" | tee /etc/apt/sources.list.d/kubernetes.list
 
     cat <<EOF | tee /etc/crictl.yaml > /dev/null
-    runtime-endpoint: unix:///run/containerd/containerd.sock
+    runtime-endpoint: unix:///run/cri-dockerd.sock
     EOF
-    setfacl --modify user:{{.User}}:rw /run/containerd/containerd.sock
+    setfacl --modify user:{{.User}}:rw /run/cri-dockerd.sock
 
     apt-get update -y -q
     apt-get install -y -q kubernetes-cni cri-tools
@@ -147,11 +183,22 @@ provision:
     #!/bin/bash
     set -eux -o pipefail
 
-    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets/worker-3.yaml
+    curl -fsSLO https://raw.githubusercontent.com/avoidik/k8s-on-macos/refs/heads/main/assets-docker/worker-2.yaml
 
-    kubeadm join --config worker-3.yaml
+    kubeadm join --config worker-2.yaml
 
 probes:
+- description: "docker to be completed"
+  script: |
+    #!/bin/bash
+    set -eux -o pipefail
+    if ! timeout 30s bash -c "until command -v docker >/dev/null 2>&1; do sleep 3; done"; then
+      echo >&2 "docker is not installed yet"
+      exit 1
+    fi
+  hint: |
+    See "/var/log/cloud-init-output.log" in the guest
+
 - description: "kubeadm to be installed"
   script: |
     #!/bin/bash
@@ -164,4 +211,4 @@ probes:
     See "/var/log/cloud-init-output.log" in the guest
 
 message: |
-  Worker 3 has joined the cluster!
+  Worker 2 has joined the cluster!

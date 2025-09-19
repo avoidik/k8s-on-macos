@@ -1,36 +1,46 @@
 vmType: qemu
+arch: aarch64
+
+mountType: 9p
+
+mounts:
+- location: "/opt/lima/storage"
+  mountPoint: "/opt/local-path-provisioner"
+  writable: true
+  9p:
+   securityModel: "mapped-xattr"
 
 images:
 - location: "https://cloud-images.ubuntu.com/releases/noble/release-20250805/ubuntu-24.04-server-cloudimg-arm64.img"
   arch: "aarch64"
   digest: "sha256:6177a7958f0168e38ca58c13961bdc613d71b9771148add03bc4ad637eb01b8d"
-
 - location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-arm64.img"
   arch: "aarch64"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release-20250805/ubuntu-24.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
+  digest: "sha256:834af9cd766d1fd86eca156db7dff34c3713fbbc7f5507a3269be2a72d2d1820"
+- location: "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+  arch: "x86_64"
 
 cpus: 2
-memory: "2GiB"
-disk: "8GiB"
+memory: "4GiB"
+disk: "20GiB"
 
 networks:
 - lima: shared
   macAddress: "52:55:55:12:34:05"
 
 portForwards:
+- guestPort: 80
+  hostIP: "0.0.0.0"
+- guestPort: 443
+  hostIP: "0.0.0.0"
 - guestPortRange: [30000, 32767]
   hostPortRange: [30000, 32767]
   hostIP: "0.0.0.0"
 - ignore: true
   proto: any
   guestIP: "0.0.0.0"
-
-mountType: 9p
-mounts:
-- location: "/opt/lima/storage"
-  mountPoint: "/storage"
-  writable: true
-  9p:
-    securityModel: "mapped-xattr"
 
 containerd:
   system: true
