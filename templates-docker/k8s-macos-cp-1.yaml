@@ -197,7 +197,6 @@ provision:
         --address "$VIP" \
         --interface "$INTERFACE" \
         --enableLoadBalancer \
-        --services \
         --leaderElection | \
           tee /etc/kubernetes/manifests/kube-vip.yaml > /dev/null
 
